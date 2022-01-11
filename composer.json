@@ -1,0 +1,16 @@
+{
+  "name": "zatcham/sso",
+  "description": "A simple SSO platform",
+  "minimum-stability": "stable",
+  "license": "proprietary",
+  "authors": [
+    {
+      "name": "Zach Matcham",
+      "email": "dev@zm-it.co.uk"
+    }
+  ],
+  "require": {
+    "ua-parser/uap-php": "^3.9",
+    "ext-mysqli": "*"
+  }
+}
