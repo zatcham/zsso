@@ -193,3 +193,51 @@ function getTFAType($userid) {
         return False;
     }
 }
+
+function verifyBrokerSrvToken($token) {
+    $dbconn = connectDBWithVars();
+    $sqlq = "SELECT `id` FROM brokers WHERE `server_token`=? LIMIT 1;";
+    $stmt = $dbconn->prepare($sqlq);
+    if ($stmt == False) {
+        return False;
+    }
+    $stmt->bind_param("s", $token);
+    $stmt->execute();
+    if ($stmt == False) {
+        return False;
+    }
+    $stmt->store_result();
+    $stmt->bind_result($id);
+    $stmt->fetch();
+    if ($stmt !== False) {
+        return $id;
+    } else {
+        return False;
+    }
+}
+
+function verifyUserToken($token, $broker) {
+    $dbconn = connectDBWithVars();
+    $sqlq = "SELECT `id` FROM brokers WHERE `token`=? and `initiating_broker`=? LIMIT 1;";
+    $stmt = $dbconn->prepare($sqlq);
+    if ($stmt == False) {
+        return False;
+    }
+    $stmt->bind_param("s", $token, $broker);
+    $stmt->execute();
+    if ($stmt == False) {
+        return False;
+    }
+    $stmt->store_result();
+    $stmt->bind_result($count);
+    $stmt->fetch();
+    if ($stmt !== False) {
+        if ($count == 1) {
+            return True;
+        } else {
+            return False;
+        }
+    } else {
+        return False;
+    }
+}

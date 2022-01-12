@@ -2,6 +2,7 @@
 require_once ("../../include/init.php");
 
 use UAParser\Parser;
+use RobThree\Auth\TwoFactorAuth;
 
 $success = $errors = $code_errors = "";
 
@@ -19,6 +20,7 @@ if (!empty($_SESSION['redirect_url'])) {
 if (!empty($_SESSION['broker'])) {
     $broker_id = $_SESSION['broker'];
     $site_name = getSiteName($broker_id);
+    $endpoint = getBrokerEndpoint($broker_id);
 } else {
     $errors = "Invalid session, no broker found.";
 }
@@ -39,7 +41,7 @@ if (!empty($_SESSION['id'])) {
 if (!empty($_SESSION['logged_in'])) {
     $success = "You're already logged in, redirecting you...";
     $auth_token = generateLoginToken($user_id, $_SESSION['broker'], $ip, $user_agent);
-    $redirect_script = "<script>setTimeout(function () {window.location.href = '$redirect_url&token=$auth_token';},2000);</script>";
+    $redirect_script = "<script>setTimeout(function () {window.location.href = '$endpoint?token=$auth_token&redirect_url=$redirect_url';},2000);</script>";
 }
 
 if (empty($_SESSION['stage1_login']) && empty($_SESSION['2fa_user'])) {
@@ -52,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
         $tfa_type = getTFAType($user_id);
         if ($tfa_type == "1") {
             $generated_token = mt_rand(111111, 999999);
+            $site_name = getSiteName($broker_id);
             $sql = "INSERT INTO tfa_tokens (user_id, token) VALUES ($user_id, $generated_token);";
             $dbconn = connectDBWithVars();
             if ($dbconn->query($sql) === TRUE) {
@@ -64,6 +67,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'GET') {
                     $errors = "An error occured whilst sending 2FA email";
                 }
             }
+        } elseif ($tfa_type == "2") {
+            $tfa = new TwoFactorAuth();
+
         }
     }
 }
@@ -82,7 +88,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $_SESSION['logged_in'] = True;
                 $_SESSION['stage2_login'] = True;
                 $auth_token = generateLoginToken($user_id, $broker_id, $ip, $user_agent);
-                $redirect_script = "<script>setTimeout(function () {window.location.href = '$redirect_url?token=$auth_token';},2000);</script>";
+                $redirect_script = "<script>setTimeout(function () {window.location.href = '$endpoint?token=$auth_token&redirect_url=$redirect_url';},2000);</script>";
             } else {
                 if ($x == "Invalid") {
                     $code_errors = "The code entered is incorrect";

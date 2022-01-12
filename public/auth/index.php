@@ -108,8 +108,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 } else {
                                     $success = "Login success, redirecting...";
                                     $_SESSION['logged_in'] = true;
-                                    $token = generateLoginToken($userid, $id, $ip, $user_agent);
-                                    $redirect_script = "<script>setTimeout(function () {window.location.href = '$redirect_url?token=$token';},2000);</script>";
+                                    $broker = verifyBrokerToken($_GET['broker']);
+                                    $token = generateLoginToken($userid, $broker, $ip, $user_agent);
+                                    $redirect_script = "<script>setTimeout(function () {window.location.href = '$endpoint?token=$token&redirect_url=$redirect_url';},2000);</script>";
                                 }
 //                                logAccessAttempt($id, $ip, $user_agent, "1st stage login success");
                             } else {
