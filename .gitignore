@@ -2,3 +2,4 @@
 vendor/*
 composer.phar
 /vendor/
+include/config.php

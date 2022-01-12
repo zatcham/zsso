@@ -12,3 +12,6 @@ require_once ("../../include/config.php");
 
 // Load functions
 require_once ("../../include/functions.php");
+
+// Load classes
+require_once ("../../include/Email.php");

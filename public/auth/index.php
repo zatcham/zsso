@@ -11,7 +11,6 @@ $login_success = $success = "";
 
 if (!isset($_GET['redirect_url'])) {
     $errors = "Invalid request: lacking redirect url.";
-//    exit();
 } else {
     $redirect_url = $_GET['redirect_url'];
     $_SESSION['redirect_url'] = $_GET['redirect_url'];
@@ -19,7 +18,6 @@ if (!isset($_GET['redirect_url'])) {
 
 if (!isset($_GET['broker'])) {
     $errors = "Invalid request: lacking broker id.";
-//    exit();
 } else {
     $broker_id = $_GET['broker'];
     $_SESSION['broker'] = $_GET['broker'];
@@ -51,6 +49,7 @@ if (empty($errors)) {
 // User agent parser
 $parser = Parser::create();
 $user_agent = $parser->parse($_SERVER['HTTP_USER_AGENT'])->toString();
+$ip = $_SERVER['REMOTE_ADDR'];
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (!empty($_POST)) {
@@ -126,7 +125,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <!--- Favicons -->
     <link rel="icon" href="../assets/favicons/favicon.ico">
 
-    <title>Login - zSSO</title>
+    <?php if (!empty($site_name)): ?><title>Login to <?php echo ($site_name); ?> - zSSO</title><?php endif; ?>
+    <?php if (empty($site_name)): ?><title>Login - zSSO</title><?php endif; ?>
 
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
@@ -170,12 +170,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         </div>
         <div class="form-group mt-3">
             <input type="submit" class="btn btn-lg btn-primary btn-block mb-2" value="Login">
-            <hr>
-            <p class="mt-2 text-muted">Server: <?php echo $server_name?></p>
-            <p class="mt-1 mb-3 text-muted">&copy; <script>document.write(new Date().getFullYear())</script> Zach Matcham</p>
         </div>
     </form>
     <?php endif; ?>
+    <hr>
+    <p class="mt-2 text-muted">Server: <?php echo $server_name?></p>
+    <p class="mt-1 mb-3 text-muted">&copy; <script>document.write(new Date().getFullYear())</script> Zach Matcham</p>
+
 </div>
 <script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous"></script>

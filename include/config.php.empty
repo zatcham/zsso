@@ -1,0 +1,18 @@
+<?php
+
+$server_name = "";
+
+// Database details
+$db_host = "localhost";
+$db_name = "sso";
+$db_username = "root";
+$db_password = "";
+
+// Mailer details
+$smtp_host = "";
+$smtp_username = "";
+$smtp_password = "";
+$smtp_port = "";
+$smtp_security = "";
+$smtp_auth = "";
+$email_from_address = "";
