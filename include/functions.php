@@ -103,8 +103,9 @@ function verify2FA($userid, $otp) {
 function generateToken() {
     $chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
     $len = strlen($chars);
+    $max_len = 40;
     $str = '';
-    for ($i = 0; $i < $len; $i++) {
+    for ($i = 0; $i < $max_len; $i++) {
         $str .= $chars[rand(0, $len - 1)];
     }
     return $str;
@@ -144,6 +145,50 @@ function verifyBrokerToken($token) {
     $stmt->fetch();
     if ($stmt !== False) {
         return $id;
+    } else {
+        return False;
+    }
+}
+
+function getBrokerEndpoint($broker) {
+    $dbconn = connectDBWithVars();
+    $sqlq = "SELECT `endpoint` FROM brokers WHERE `id`=? LIMIT 1;";
+    $stmt = $dbconn->prepare($sqlq);
+    if ($stmt == False) {
+        return False;
+    }
+    $stmt->bind_param("s", $broker);
+    $stmt->execute();
+    if ($stmt == False) {
+        return False;
+    }
+    $stmt->store_result();
+    $stmt->bind_result($url);
+    $stmt->fetch();
+    if ($stmt !== False) {
+        return $url;
+    } else {
+        return False;
+    }
+}
+
+function getTFAType($userid) {
+    $dbconn = connectDBWithVars();
+    $sqlq = "SELECT `2fa_type` FROM users WHERE `id`=? LIMIT 1;";
+    $stmt = $dbconn->prepare($sqlq);
+    if ($stmt == False) {
+        return False;
+    }
+    $stmt->bind_param("s", $userid);
+    $stmt->execute();
+    if ($stmt == False) {
+        return False;
+    }
+    $stmt->store_result();
+    $stmt->bind_result($type);
+    $stmt->fetch();
+    if ($stmt !== False) {
+        return $type;
     } else {
         return False;
     }

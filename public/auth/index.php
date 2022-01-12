@@ -3,6 +3,10 @@
 require_once ("../../include/init.php");
 
 use UAParser\Parser;
+// User agent parser
+$parser = Parser::create();
+$user_agent = $parser->parse($_SERVER['HTTP_USER_AGENT'])->toString();
+$ip = $_SERVER['REMOTE_ADDR'];
 
 // Set all vars to null
 $errors = $login_error = "";
@@ -22,9 +26,21 @@ if (!isset($_GET['broker'])) {
     $id = verifyBrokerToken($_GET['broker']);
     if (is_int($id)) {
         $site_name = getSiteName($_GET['broker']);
+        $endpoint = getBrokerEndpoint($id);
         $_SESSION['broker'] = $id;
     } else {
         $errors = "Invalid broker token";
+    }
+}
+
+if (!isset($_GET['level'])) {
+    $errors = "Invalid request: lacking access level";
+} else {
+    if (strval($_GET['level']) >= 3) { // TODO
+        $errors = "Invalid access level";
+    } else {
+        $access_level = $_GET['level'];
+        // 1 = no tfa req by site, 2 = tfa req
     }
 }
 
@@ -33,7 +49,8 @@ if (empty($errors)) {
         if ($_SESSION["logged_in"] == true) {
             // Do smth
             $success = "You're already logged in, redirecting you..";
-            $redirect_script = "<script>setTimeout(function () {window.location.href = '$redirect_url';},2000);</script>";
+            $token = generateLoginToken($_SESSION["id"], $id, $ip, $user_agent);
+            $redirect_script = "<script>setTimeout(function () {window.location.href = '$endpoint?token=$token&redirect_url=$redirect_url';},2000);</script>";
         }
     }
     if (isset($_SESSION["2fa_user"])) {
@@ -42,17 +59,12 @@ if (empty($errors)) {
             if ($_SESSION["stage1_login"] == true) {
                 if (!isset($_SESSION["logged_in"])) {
                     $success = "Additonal authentication required...";
-                    $redirect_script = "<script>setTimeout(function () {window.location.href = '2fa.php';},2000);</script>";
+                    $redirect_script = "<script>setTimeout(function () {window.location.href = '2fa.php?redirect_url=$redirect_url';},2000);</script>";
                 }
             }
         }
     }
 }
-
-// User agent parser
-$parser = Parser::create();
-$user_agent = $parser->parse($_SERVER['HTTP_USER_AGENT'])->toString();
-$ip = $_SERVER['REMOTE_ADDR'];
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (!empty($_POST)) {
@@ -81,22 +93,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($stmt->execute()) {
                     $stmt->store_result();
                     if ($stmt->num_rows == 1) { // email exists
-                        $stmt->bind_result($id, $email, $hashed_password, $tfa_status); // bind sql result to vars
+                        $stmt->bind_result($userid, $email, $hashed_password, $tfa_status); // bind sql result to vars
                         if ($stmt->fetch()) {
                             if (password_verify($password, $hashed_password)) {
                                 $_SESSION["stage1_login"] = true; // password is correct
-                                $_SESSION["id"] = $id;
+                                $_SESSION["id"] = $userid;
                                 $_SESSION["email"] = $email;
                                 $ip = $_SERVER['REMOTE_ADDR'];
                                 $stmt->close();
                                 if ($tfa_status == "1") {
-                                    $login_success = "Success, additonal authentication required...";
+                                    $success = "Success, additonal authentication required...";
                                     $_SESSION['2fa_user'] = true;
-                                    $redirect_script = "<script>setTimeout(function () {window.location.href = '2fa.php';},2000);</script>";
+                                    $redirect_script = "<script>setTimeout(function () {window.location.href = '2fa.php?redirect_url=$redirect_url';},2000);</script>";
                                 } else {
-                                    $login_success = "Login success, redirecting...";
+                                    $success = "Login success, redirecting...";
                                     $_SESSION['logged_in'] = true;
-                                    $redirect_script = "<script>setTimeout(function () {window.location.href = '$redirect_url';},2000);</script>";
+                                    $token = generateLoginToken($userid, $id, $ip, $user_agent);
+                                    $redirect_script = "<script>setTimeout(function () {window.location.href = '$redirect_url?token=$token';},2000);</script>";
                                 }
 //                                logAccessAttempt($id, $ip, $user_agent, "1st stage login success");
                             } else {

@@ -3,6 +3,8 @@ require_once ("../../include/init.php");
 
 use UAParser\Parser;
 
+$success = $errors = $code_errors = "";
+
 // User agent parser
 $parser = Parser::create();
 $user_agent = $parser->parse($_SERVER['HTTP_USER_AGENT'])->toString();
@@ -47,17 +49,20 @@ if (empty($_SESSION['stage1_login']) && empty($_SESSION['2fa_user'])) {
 if ($_SERVER['REQUEST_METHOD'] == 'GET') {
     // generate token and add to db
     if (empty($errors)) {
-        $generated_token = mt_rand(111111, 999999);
-        $sql = "INSERT INTO tfa_tokens (user_id, token) VALUES ($user_id, $generated_token);";
-        $dbconn = connectDBWithVars();
-        if ($dbconn->query($sql) === TRUE) {
-            // Inserted ok, now email
-            $dbconn->close();
-            if (Email::send2FA($email, $ip, $user_agent, $generated_token, $site_name)) {
+        $tfa_type = getTFAType($user_id);
+        if ($tfa_type == "1") {
+            $generated_token = mt_rand(111111, 999999);
+            $sql = "INSERT INTO tfa_tokens (user_id, token) VALUES ($user_id, $generated_token);";
+            $dbconn = connectDBWithVars();
+            if ($dbconn->query($sql) === TRUE) {
+                // Inserted ok, now email
+                $dbconn->close();
+                if (Email::send2FA($email, $ip, $user_agent, $generated_token, $site_name)) {
 //            $success = "Successfully sent 2FA";
-                // do nowt if success
-            } else {
-                $errors = "An error occured whilst sending 2FA email";
+                    // do nowt if success
+                } else {
+                    $errors = "An error occured whilst sending 2FA email";
+                }
             }
         }
     }
@@ -80,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $redirect_script = "<script>setTimeout(function () {window.location.href = '$redirect_url?token=$auth_token';},2000);</script>";
             } else {
                 if ($x == "Invalid") {
-                    $errors = "The code entered is incorrect";
+                    $code_errors = "The code entered is incorrect";
                 } else {
                     $errors = "An error occured whislt checking the 2FA code";
                 }
@@ -127,6 +132,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     <h5>To log into <?php echo $site_name; ?>, we just need to check who you are.</h5>
     <p>To do this, we've sent a code to your email address.</p>
     <p>Email Address: <?php echo mask_email($email); ?> <br>
+        <?php if (!empty($code_errors)): ?>
+            <div class="alert alert-danger"><?php echo $code_errors ?></div>
+        <?php endif; ?>
     </p>
     <hr/>
     <form id="2fa-form" name="2fa-form" action="" method="post" class="mt-1">
