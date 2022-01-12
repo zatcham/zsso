@@ -3,6 +3,11 @@ require_once ("../../include/init.php");
 
 use UAParser\Parser;
 
+// User agent parser
+$parser = Parser::create();
+$user_agent = $parser->parse($_SERVER['HTTP_USER_AGENT'])->toString();
+$ip = $_SERVER['REMOTE_ADDR'];
+
 if (!empty($_SESSION['redirect_url'])) {
     $redirect_url = $_SESSION['redirect_url'];
 } else {
@@ -11,7 +16,7 @@ if (!empty($_SESSION['redirect_url'])) {
 
 if (!empty($_SESSION['broker'])) {
     $broker_id = $_SESSION['broker'];
-    $site_name = getSiteName($_SESSION['broker']);
+    $site_name = getSiteName($broker_id);
 } else {
     $errors = "Invalid session, no broker found.";
 }
@@ -29,24 +34,31 @@ if (!empty($_SESSION['id'])) {
     $errors = "Invalid session, missing user details.";
 }
 
-// User agent parser
-$parser = Parser::create();
-$user_agent = $parser->parse($_SERVER['HTTP_USER_AGENT'])->toString();
-$ip = $_SERVER['REMOTE_ADDR'];
+if (!empty($_SESSION['logged_in'])) {
+    $success = "You're already logged in, redirecting you...";
+    $auth_token = generateLoginToken($user_id, $_SESSION['broker'], $ip, $user_agent);
+    $redirect_script = "<script>setTimeout(function () {window.location.href = '$redirect_url&token=$auth_token';},2000);</script>";
+}
+
+if (empty($_SESSION['stage1_login']) && empty($_SESSION['2fa_user'])) {
+    $errors = "You're not supposed to be here yet...";
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'GET') {
     // generate token and add to db
-    $generated_token = mt_rand(111111, 999999);
-    $sql = "INSERT INTO tfa_tokens (user_id, token) VALUES ($user_id, $generated_token);";
-    $dbconn = connectDBWithVars();
-    if ($dbconn->query($sql) === TRUE) {
-        // Inserted ok, now email
-        $dbconn->close();
-        if (Email::send2FA($email, $ip, $user_agent, $generated_token, $site_name)) {
+    if (empty($errors)) {
+        $generated_token = mt_rand(111111, 999999);
+        $sql = "INSERT INTO tfa_tokens (user_id, token) VALUES ($user_id, $generated_token);";
+        $dbconn = connectDBWithVars();
+        if ($dbconn->query($sql) === TRUE) {
+            // Inserted ok, now email
+            $dbconn->close();
+            if (Email::send2FA($email, $ip, $user_agent, $generated_token, $site_name)) {
 //            $success = "Successfully sent 2FA";
-            // do nowt if success
-        } else {
-            $errors = "An error occured whilst sending 2FA email";
+                // do nowt if success
+            } else {
+                $errors = "An error occured whilst sending 2FA email";
+            }
         }
     }
 }
@@ -64,7 +76,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 //                Auth::logAccessAttempt($userid, $ip, "2FA login successful", $user_agent);
                 $_SESSION['logged_in'] = True;
                 $_SESSION['stage2_login'] = True;
-                $redirect_script = "<script>setTimeout(function () {window.location.href = '$redirect_url';},2000);</script>";
+                $auth_token = generateLoginToken($user_id, $broker_id, $ip, $user_agent);
+                $redirect_script = "<script>setTimeout(function () {window.location.href = '$redirect_url?token=$auth_token';},2000);</script>";
             } else {
                 if ($x == "Invalid") {
                     $errors = "The code entered is incorrect";
@@ -103,14 +116,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 <div class="wrapper border rounded px-5" style="background-color: #f5f5f5;">
     <img class="mt-2" src="../assets/logo.png" alt="zSSO Logo" style="width: 20%;">
     <h2>zSSO</h2>
-    <h5>To log into <?php echo $site_name; ?>, we just need to check who you are.</h5>
     <?php if (!empty($errors)): ?>
         <div class="alert alert-danger"><?php echo $errors ?></div>
     <?php endif; ?>
     <?php if (!empty($success)): ?>
         <div class="alert alert-success"><?php echo $success ?></div>
     <?php endif; ?>
+
     <?php if (empty($success) && empty($errors)): ?>
+    <h5>To log into <?php echo $site_name; ?>, we just need to check who you are.</h5>
     <p>To do this, we've sent a code to your email address.</p>
     <p>Email Address: <?php echo mask_email($email); ?> <br>
     </p>

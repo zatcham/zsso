@@ -99,3 +99,52 @@ function verify2FA($userid, $otp) {
         return False;
     }
 }
+
+function generateToken() {
+    $chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    $len = strlen($chars);
+    $str = '';
+    for ($i = 0; $i < $len; $i++) {
+        $str .= $chars[rand(0, $len - 1)];
+    }
+    return $str;
+}
+
+function generateLoginToken($user_id, $broker, $ip_address, $device) {
+    $token = generateToken();
+    $dbconn = connectDBWithVars();
+    $sql = "INSERT INTO auth_tokens (user_id, token, ip_address, device, initiating_broker) VALUES (?, ?, ?, ?, ?);";
+    $stmt = $dbconn->prepare($sql);
+    if ($stmt == False) {
+        return False;
+    }
+    $stmt->bind_param("sssss", $user_id, $token, $ip_address, $device, $broker);
+    $stmt->execute();
+    if ($stmt == False) {
+        return False;
+    } else {
+        return $token;
+    }
+}
+
+function verifyBrokerToken($token) {
+    $dbconn = connectDBWithVars();
+    $sqlq = "SELECT `id` FROM brokers WHERE `token`=? LIMIT 1;";
+    $stmt = $dbconn->prepare($sqlq);
+    if ($stmt == False) {
+        return False;
+    }
+    $stmt->bind_param("s", $token);
+    $stmt->execute();
+    if ($stmt == False) {
+        return False;
+    }
+    $stmt->store_result();
+    $stmt->bind_result($id);
+    $stmt->fetch();
+    if ($stmt !== False) {
+        return $id;
+    } else {
+        return False;
+    }
+}

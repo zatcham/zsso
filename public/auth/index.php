@@ -19,10 +19,13 @@ if (!isset($_GET['redirect_url'])) {
 if (!isset($_GET['broker'])) {
     $errors = "Invalid request: lacking broker id.";
 } else {
-    $broker_id = $_GET['broker'];
-    $_SESSION['broker'] = $_GET['broker'];
-    // Get site name from broker id via db
-    $site_name = getSiteName($_GET['broker']);
+    $id = verifyBrokerToken($_GET['broker']);
+    if (is_int($id)) {
+        $site_name = getSiteName($_GET['broker']);
+        $_SESSION['broker'] = $id;
+    } else {
+        $errors = "Invalid broker token";
+    }
 }
 
 if (empty($errors)) {
